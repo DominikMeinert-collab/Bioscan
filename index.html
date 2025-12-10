@@ -10,8 +10,8 @@ body {
     background-image: url('https://miro.medium.com/v2/resize:fit:1400/1*Lx2t7pemV__00FA15_Zckw.jpeg');
     background-repeat: no-repeat;
     background-position: center;
-    background-attachment: fixed; /* Hintergrund fixiert */
-    background-size: cover;       /* skaliert, aber nicht dynamisch beim Scrollen */
+    background-attachment: fixed;
+    background-size: cover;
     color: #000;
 }
 
@@ -23,7 +23,6 @@ body {
     flex-wrap: wrap; 
 }
 
-/* Box für Gesamtwert */
 .wert-box {
     background: rgba(255,255,255,0.85);
     padding: 10px 15px;
@@ -64,7 +63,6 @@ body {
     border-radius: 5px;
 }
 
-/* --- KLAPP HEADER --- */
 .gattung-header {
     cursor: pointer;
     padding: 8px;
@@ -79,7 +77,6 @@ body {
     background: rgba(180,180,180,0.8);
 }
 
-/* --- ANIMATION FÜR AUFKLAPPEN --- */
 .gattung-content {
     overflow: hidden;
     max-height: 0;
@@ -140,10 +137,9 @@ input[type="number"] { width: 60px; }
       <option>Hochmetallhaltige Welt</option>
     </select>
 
-    <button onclick="renderPlants()">Aktualisieren</button>
+    <button onclick="renderPlants(); renderPossiblePlants()">Aktualisieren</button>
   </div>
 
-  <!-- Neue Wert-Box -->
   <div id="wert-box" class="wert-box">
       <div id="gesamtwert">Gesamtwert: 0</div>
       <div id="gesamtanzahl">Gesammelt: 0 Pflanzen</div>
@@ -152,10 +148,22 @@ input[type="number"] { width: 60px; }
 
 <div class="gattungs-container" id="gattungen"></div>
 
+<!-- Neues Fenster: Mögliche Pflanzen für Planeten -->
+<div class="planet-window" style="margin-top:20px; padding:10px; background: rgba(255,255,255,0.85); border-radius:8px; border:2px solid #ccc;">
+  <h3>Mögliche Pflanzen auf diesem Planeten</h3>
+
+  <div id="planet-checkboxes" style="margin-bottom:10px;">
+    <!-- Checkboxen pro Gattung -->
+  </div>
+
+  <div id="planet-pflanzen-liste"></div>
+  <div id="planet-gesamtwert" style="margin-top:5px; font-weight:bold;">Gesamtwert: 0</div>
+
+  <button onclick="renderPossiblePlants()">Aktualisieren</button>
+</div>
+
 <script>
-/* -------------------------------------------------------
-   PFLANZEN (BEISPIEL — hier deine 114 rein)
---------------------------------------------------------- */
+/* ------------------------ PFLANZEN ------------------------ */
 const plantsData = [
 // Beispielstruktur, später auf 114 Pflanzen erweitern
  // Gattung: Aleoida
@@ -315,31 +323,21 @@ const plantsData = [
   
 ];
 
-/* -------------------------------------------------------
-   LOCAL STORAGE LADEN
---------------------------------------------------------- */
+/* ------------------------ LOCAL STORAGE ------------------------ */
 function loadStorage() {
   const saved = localStorage.getItem("plantsSave");
   if (!saved) return;
-
   const parsed = JSON.parse(saved);
-  plantsData.forEach(p => {
-    if (parsed[p.name] !== undefined) p.gesammelt = parsed[p.name];
-  });
+  plantsData.forEach(p => { if (parsed[p.name] !== undefined) p.gesammelt = parsed[p.name]; });
 }
 
-/* -------------------------------------------------------
-   LOCAL STORAGE SPEICHERN
---------------------------------------------------------- */
 function saveStorage() {
   const saveObj = {};
   plantsData.forEach(p => saveObj[p.name] = p.gesammelt);
   localStorage.setItem("plantsSave", JSON.stringify(saveObj));
 }
 
-/* -------------------------------------------------------
-   BEDINGUNGEN PRÜFEN
---------------------------------------------------------- */
+/* ------------------------ BEDINGUNGEN PRÜFEN ------------------------ */
 function checkVoraussetzungen(p) {
   const druck = parseFloat(document.getElementById('druck').value);
   const tempMin = parseFloat(document.getElementById('temp_min').value);
@@ -350,38 +348,26 @@ function checkVoraussetzungen(p) {
   const subst = document.getElementById('subst').value;
 
   let ok = true;
-
   if(p.voraussetzungen.druck.min !== undefined &&
      p.voraussetzungen.druck.max !== undefined &&
      (druck < p.voraussetzungen.druck.min || druck > p.voraussetzungen.druck.max)) ok = false;
-
   if(p.voraussetzungen.temperatur.min !== undefined &&
      p.voraussetzungen.temperatur.max !== undefined &&
      (tempMax < p.voraussetzungen.temperatur.min || tempMin > p.voraussetzungen.temperatur.max)) ok = false;
-
   if(p.voraussetzungen.gravitation.min !== undefined &&
      p.voraussetzungen.gravitation.max !== undefined &&
      (grav < p.voraussetzungen.gravitation.min || grav > p.voraussetzungen.gravitation.max)) ok = false;
-
-  if(p.voraussetzungen.atmosphaere.length &&
-     !p.voraussetzungen.atmosphaere.includes(atmos)) ok = false;
-
-  if(p.voraussetzungen.vulkanismus.length &&
-     !p.voraussetzungen.vulkanismus.includes(vulkan)) ok = false;
-
-  if(p.voraussetzungen.substanz.length &&
-     !p.voraussetzungen.substanz.includes(subst)) ok = false;
+  if(p.voraussetzungen.atmosphaere.length && !p.voraussetzungen.atmosphaere.includes(atmos)) ok = false;
+  if(p.voraussetzungen.vulkanismus.length && !p.voraussetzungen.vulkanismus.includes(vulkan)) ok = false;
+  if(p.voraussetzungen.substanz.length && !p.voraussetzungen.substanz.includes(subst)) ok = false;
 
   return ok;
 }
 
-/* -------------------------------------------------------
-   RENDER — mit automatisch öffnenden Boxen
---------------------------------------------------------- */
+/* ------------------------ RENDER PFLANZEN ------------------------ */
 function renderPlants() {
   const container = document.getElementById('gattungen');
   container.innerHTML = '';
-
   const gattungen = [...new Set(plantsData.map(p => p.gattung))];
 
   gattungen.forEach(gattung => {
@@ -399,13 +385,11 @@ function renderPlants() {
     const tbody = document.createElement('tbody');
 
     let shouldOpen = false;
-
     plantsData.filter(p => p.gattung === gattung).forEach(p => {
       const row = document.createElement('tr');
       const ok = checkVoraussetzungen(p);
       row.className = ok ? 'green' : 'red';
-
-      if (ok) shouldOpen = true;
+      if(ok) shouldOpen = true;
 
       row.innerHTML = `
         <td>${p.name}</td>
@@ -421,11 +405,8 @@ function renderPlants() {
 
     table.appendChild(tbody);
     content.appendChild(table);
-
     header.onclick = () => box.classList.toggle('open');
-
-    if (shouldOpen) box.classList.add('open');
-
+    if(shouldOpen) box.classList.add('open');
     box.appendChild(header);
     box.appendChild(content);
     container.appendChild(box);
@@ -434,44 +415,89 @@ function renderPlants() {
   updateGesamtwert();
 }
 
-/* -------------------------------------------------------
-   ÄNDERN + SPEICHERN
---------------------------------------------------------- */
+/* ------------------------ ÄNDERN + SPEICHERN ------------------------ */
 function change(name, delta) {
   const plant = plantsData.find(p => p.name === name);
-  if (!plant) return;
-
+  if(!plant) return;
   plant.gesammelt = Math.max(0, plant.gesammelt + delta);
   document.getElementById('cnt_' + name).innerText = plant.gesammelt;
-
   saveStorage();
   updateGesamtwert();
 }
 
-/* -------------------------------------------------------
-   GESAMTWERT + GESAMTANZAHL
---------------------------------------------------------- */
 function updateGesamtwert() {
   let total = 0;
   let count = 0;
-
-  plantsData.forEach(p => {
-    total += p.gesammelt * p.wert;
-    count += p.gesammelt;
-  });
-
-  document.getElementById('gesamtwert').innerText =
-      "Gesamtwert: " + total.toLocaleString();
-
-  document.getElementById('gesamtanzahl').innerText =
-      "Gesammelt: " + count + " Pflanzen";
+  plantsData.forEach(p => { total += p.gesammelt * p.wert; count += p.gesammelt; });
+  document.getElementById('gesamtwert').innerText = "Gesamtwert: " + total.toLocaleString();
+  document.getElementById('gesamtanzahl').innerText = "Gesammelt: " + count + " Pflanzen";
 }
 
-/* -------------------------------------------------------
-   START
---------------------------------------------------------- */
+/* ------------------------ PLANET-FENSTER ------------------------ */
+function initPlanetCheckboxes() {
+  const container = document.getElementById('planet-checkboxes');
+  container.innerHTML = '';
+  const gattungen = [...new Set(plantsData.map(p => p.gattung))];
+  gattungen.forEach(gattung => {
+    const id = 'chk_' + gattung;
+    const label = document.createElement('label');
+    label.style.marginRight = '10px';
+
+    const cb = document.createElement('input');
+    cb.type = 'checkbox';
+    cb.id = id;
+    cb.checked = true;
+    cb.onchange = () => renderPossiblePlants();
+
+    label.appendChild(cb);
+    label.appendChild(document.createTextNode(' ' + gattung));
+    container.appendChild(label);
+  });
+}
+
+function renderPossiblePlants() {
+  const druck = parseFloat(document.getElementById('druck').value);
+  const tempMin = parseFloat(document.getElementById('temp_min').value);
+  const tempMax = parseFloat(document.getElementById('temp_max').value);
+  const grav = parseFloat(document.getElementById('grav').value);
+  const atmos = document.getElementById('atmos').value;
+  const vulkan = document.getElementById('vulkan').value;
+  const subst = document.getElementById('subst').value;
+
+  const gattungen = [...new Set(plantsData.map(p => p.gattung))];
+  let html = '<table style="width:100%; border-collapse:collapse;"><tr><th>Gattung</th><th>Pflanze</th><th>Wert</th></tr>';
+  let gesamt = 0;
+
+  gattungen.forEach(gattung => {
+    const checkbox = document.getElementById('chk_' + gattung);
+    if(!checkbox.checked) return;
+
+    const möglich = plantsData.filter(p => 
+      p.gattung === gattung &&
+      (p.voraussetzungen.druck.min === undefined || (druck >= p.voraussetzungen.druck.min && druck <= p.voraussetzungen.druck.max)) &&
+      (p.voraussetzungen.temperatur.min === undefined || !(tempMax < p.voraussetzungen.temperatur.min || tempMin > p.voraussetzungen.temperatur.max)) &&
+      (p.voraussetzungen.gravitation.min === undefined || (grav >= p.voraussetzungen.gravitation.min && grav <= p.voraussetzungen.gravitation.max)) &&
+      (p.voraussetzungen.atmosphaere.length === 0 || p.voraussetzungen.atmosphaere.includes(atmos)) &&
+      (p.voraussetzungen.vulkanismus.length === 0 || p.voraussetzungen.vulkanismus.includes(vulkan)) &&
+      (p.voraussetzungen.substanz.length === 0 || p.voraussetzungen.substanz.includes(subst))
+    );
+
+    if(möglich.length === 0) return;
+    const top = möglich.reduce((a,b) => a.wert > b.wert ? a : b);
+    gesamt += top.wert;
+    html += `<tr style="background-color:#c8f0c8;"><td>${gattung}</td><td>${top.name}</td><td>${top.wert.toLocaleString()}</td></tr>`;
+  });
+
+  html += '</table>';
+  document.getElementById('planet-pflanzen-liste').innerHTML = html;
+  document.getElementById('planet-gesamtwert').innerText = "Gesamtwert: " + gesamt.toLocaleString();
+}
+
+/* ------------------------ START ------------------------ */
 loadStorage();
 renderPlants();
+initPlanetCheckboxes();
+renderPossiblePlants();
 </script>
 
 </body>
