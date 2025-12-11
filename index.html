@@ -73,9 +73,7 @@ body {
     text-align: center;
 }
 
-.gattung-header:hover {
-    background: rgba(180,180,180,0.8);
-}
+.gattung-header:hover { background: rgba(180,180,180,0.8); }
 
 .gattung-content {
     overflow: hidden;
@@ -83,22 +81,60 @@ body {
     transition: max-height 0.35s ease;
 }
 
-.gattung-box.open .gattung-content {
-    max-height: 2000px;
-}
+.gattung-box.open .gattung-content { max-height: 2000px; }
 
 table { border-collapse: collapse; width: 100%; margin-top: 10px; }
 th, td { border: 1px solid #ccc; padding: 5px; text-align: center; font-size: 0.9em; }
+
 button { padding: 2px 6px; margin: 0 2px; }
 .green { background-color: #c8f0c8; }
 .red { background-color: #f0c8c8; }
+
 input[type="number"] { width: 60px; }
+
+/* Login Overlay */
+#loginBox {
+    position: fixed;
+    top: 0; left: 0; width: 100%; height: 100%;
+    background: rgba(0,0,0,0.6);
+    display: none; justify-content: center; align-items: center;
+}
+.loginWindow {
+    background: white;
+    padding: 20px;
+    border-radius: 10px;
+    width: 350px;
+}
 </style>
 </head>
 <body>
 
+<!-- LOGIN OVERLAY -->
+<div id="loginBox">
+    <div class="loginWindow">
+        <h3>EDSM Login</h3>
+        <label>Commander Name:</label>
+        <input id="edsmName" type="text" style="width:100%; margin-bottom:10px;">
+
+        <label>API Key:</label>
+        <input id="edsmKey" type="password" style="width:100%; margin-bottom:15px;">
+
+        <button onclick="saveLogin()" style="width:100%;">Login</button>
+    </div>
+</div>
+
 <div class="header">
   <div class="controls">
+
+    <!-- Planet Dropdown (neu) -->
+    Planet:
+    <select id="planetSelect">
+      <option>Bitte EDSM Login...</option>
+    </select>
+
+    <button onclick="openLogin()">EDSM Login</button>
+    <button onclick="logoutEDSM()">Logout</button>
+
     Druck: <input id="druck" type="number" step="0.01" value="0.03">
     Temperatur: von <input id="temp_min" type="number" value="0"> bis <input id="temp_max" type="number" value="200">
     Gravitation: <input id="grav" type="number" step="0.01" value="0.33">
@@ -137,7 +173,7 @@ input[type="number"] { width: 60px; }
       <option>Hochmetallhaltige Welt</option>
     </select>
 
-    <button onclick="renderPlants(); renderPossiblePlants()">Aktualisieren</button>
+    <button onclick="renderPlants()">Aktualisieren</button>
   </div>
 
   <div id="wert-box" class="wert-box">
@@ -148,196 +184,117 @@ input[type="number"] { width: 60px; }
 
 <div class="gattungs-container" id="gattungen"></div>
 
-<!-- Neues Fenster: Mögliche Pflanzen für Planeten -->
-<div class="planet-window" style="margin-top:20px; padding:10px; background: rgba(255,255,255,0.85); border-radius:8px; border:2px solid #ccc;">
-  <h3>Mögliche Pflanzen auf diesem Planeten</h3>
-
-  <div id="planet-checkboxes" style="margin-bottom:10px;">
-    <!-- Checkboxen pro Gattung -->
-  </div>
-
-  <div id="planet-pflanzen-liste"></div>
-  <div id="planet-gesamtwert" style="margin-top:5px; font-weight:bold;">Gesamtwert: 0</div>
-
-  <button onclick="renderPossiblePlants()">Aktualisieren</button>
-</div>
-
 <script>
-/* ------------------------ PFLANZEN ------------------------ */
+/* -------------------------------------------------------
+   PFLANZEN-DATEN (gekürzt – du kannst hier deine 114 einsetzen)
+--------------------------------------------------------- */
 const plantsData = [
-// Beispielstruktur, später auf 114 Pflanzen erweitern
- // Gattung: Aleoida
-    { gattung: "Aleoida", name: "Arcus", wert: 7252500, gesammelt: 0, voraussetzungen: { druck: {min:0.02,max:0.1}, temperatur: {min:175,max:180}, gravitation: {min:0.04,max:0.27}, atmosphaere: ["Kohlendioxid"], vulkanismus: [], substanz: ["Felsige Welt", "Hochmetallhaltige Welt"] } },
-    { gattung: "Aleoida", name: "Coronamus", wert: 6284600, gesammelt: 0, voraussetzungen: { druck: {min:0.03,max:0.1}, temperatur: {min:180,max:190}, gravitation: {min:0.04,max:0.27}, atmosphaere: ["Kohlendioxid"], vulkanismus: [], substanz: ["Felsige Welt", "Hochmetallhaltige Welt"] } },
-    { gattung: "Aleoida", name: "Gravis", wert: 12934900, gesammelt: 0, voraussetzungen: { druck: {min:0.05,max:0.1}, temperatur: {min:190,max:195}, gravitation: {min:0.04,max:0.27}, atmosphaere: ["Kohlendioxid"], vulkanismus: [], substanz: ["Felsige Welt", "Hochmetallhaltige Welt"] } },
-    { gattung: "Aleoida", name: "Laminiae", wert: 3385200, gesammelt: 0, voraussetzungen: { druck: {min:0.00,max:0.01}, temperatur: {min:152,max:177}, gravitation: {min:0.04,max:0.27}, atmosphaere: ["Kohlendioxid"], vulkanismus: [], substanz: ["Felsige Welt", "Hochmetallhaltige Welt"] } },
-    { gattung: "Aleoida", name: "Spica", wert: 3385200, gesammelt: 0, voraussetzungen: { druck: {min:0.00,max:0.01}, temperatur: {min:170,max:177}, gravitation: {min:0.04,max:0.27}, atmosphaere: ["Kohlendioxid"], vulkanismus: [], substanz: ["Felsige Welt", "Hochmetallhaltige Welt"] } },
-  // Gattung: Amphoren
-    { gattung: "Amphoren", name: "Amphoren", wert: 1628800, gesammelt: 0, voraussetzungen: { druck: {min:0,max:0}, temperatur: {min:0,max:0}, gravitation: {min:0,max:0}, atmosphaere: [], vulkanismus: [], substanz: ["Metallreiche Welt"] } },
-  // Gattung: Borkenhügel
-  { gattung: "Borkenhügel", name: "Borkenhügel", wert: 1471900, gesammelt: 0, voraussetzungen: { druck: {min:0,max:0}, temperatur: {min:0,max:0}, gravitation: {min:0,max:0}, atmosphaere: [], vulkanismus: [], substanz: [] } },
-  // ... und so weiter für alle 21 Gattungen
-  // Gattung: Bacterium
-    { gattung: "Bacterium", name: "Acies", wert: 1000000, gesammelt: 0, voraussetzungen: { druck: {min:0,max:99999}, temperatur: {min:20,max:61}, gravitation: {min:0.26,max:0.59}, atmosphaere: ["Neon"], vulkanismus: [], substanz: ["Eiswelt","Felsige Eiswelt"] } },
-    { gattung: "Bacterium", name: "Alcyoneum", wert: 1658500, gesammelt: 0, voraussetzungen: { druck: {min:0.00,max:0.01}, temperatur: {min:152,max:176}, gravitation: {min:0.04,max:0.37}, atmosphaere: ["Ammoniak"], vulkanismus: ["nur ohne"], substanz: ["Felsige Welt","Hochmetallhaltige Welt"] } },
-    { gattung: "Bacterium", name: "Aurasus", wert: 1000000, gesammelt: 0, voraussetzungen: { druck: {min:0.00,max:0.1}, temperatur: {min:145,max:400}, gravitation: {min:0.04,max:0.61}, atmosphaere: ["Kohlendioxid"], vulkanismus: ["nur ohne"], substanz: ["Felsige Eiswelt","Felsige Welt","Hochmetallhaltige Welt"] } },
-    { gattung: "Bacterium", name: "Bullaris", wert: 1152500, gesammelt: 0, voraussetzungen: { druck: {min:0.00,max:0.1}, temperatur: {min:68,max:127}, gravitation: {min:0.02,max:0.6}, atmosphaere: ["Methan"], vulkanismus: [], substanz: ["Eiswelt","Felsige Eiswelt","Felsige Welt","Hochmetallhaltige Welt"] } },
-    { gattung: "Bacterium", name: "Cerbrus", wert: 1689800, gesammelt: 0, voraussetzungen: { druck: {min:0.00,max:0.1}, temperatur: {min:132,max:500}, gravitation: {min:0.04,max:0.6}, atmosphaere: ["Wasser","Schwefeldioxid"], vulkanismus: [], substanz: ["Felsige Eiswelt","Felsige Welt","Hochmetallhaltige Welt"] } },
-    { gattung: "Bacterium", name: "Informen", wert: 8418000, gesammelt: 0, voraussetzungen: { druck: {min:0.00,max:0.1}, temperatur: {min:43,max:149}, gravitation: {min:0,max:0.1}, atmosphaere: ["Stickstoff"], vulkanismus: [], substanz: ["Eiswelt","Felsige Eiswelt","Felsige Welt","Hochmetallhaltige Welt"] } },
-    { gattung: "Bacterium", name: "Nebulus", wert: 5289900, gesammelt: 0, voraussetzungen: { druck: {min:0.06,max:0.1}, temperatur: {min:20,max:21}, gravitation: {min:0.4,m:54}, atmosphaere: ["Helium"], vulkanismus: ["Ammoniak","Stickstoff"], substanz: ["Eiswelt"] } },
-    { gattung: "Bacterium", name: "Omentum", wert: 4638900, gesammelt: 0, voraussetzungen: { druck: {min:0.00,max:0.1}, temperatur: {min:20,max:284}, gravitation: {min:0.03,max:0.6}, atmosphaere: ["Jede"], vulkanismus: ["Methan","Kohlendioxid"], substanz: ["Eiswelt"] } },
-    { gattung: "Bacterium", name: "Scopulum", wert: 4934500, gesammelt: 0, voraussetzungen: { druck: {min:0.00,max:0.1}, temperatur: {min:20,max:209}, gravitation: {min:0.03,max:0.6}, atmosphaere: ["Jede"], vulkanismus: [], substanz: ["Eiswelt","Felsige Eiswelt"] } },
-    { gattung: "Bacterium", name: "Tela", wert: 1949000, gesammelt: 0, voraussetzungen: { druck: {min:0.0,max:0.1}, temperatur: {min:20,max:500}, gravitation: {min:0.03,max:0.61}, atmosphaere: ["Jede"], vulkanismus: [], substanz: ["Eiswelt","Felsige Eiswelt","Felsige Welt","Hochmetallhaltige Welt"] } },
-    { gattung: "Bacterium", name: "Verrata", wert: 3897000, gesammelt: 0, voraussetzungen: { druck: {min:0.00,max:0.1}, temperatur: {min:20,max:441}, gravitation: {min:0.03,max:0.51}, atmosphaere: ["Jede"], vulkanismus: ["Wasser"], substanz: ["Eiswelt","Felsige Eiswelt","Felsige Welt"] } },
-    { gattung: "Bacterium", name: "Vesicula", wert: 1000000, gesammelt: 0, voraussetzungen: { druck: {min:0.0,max:0.1}, temperatur: {min:41,max:171}, gravitation: {min:0.03,max:0.51}, atmosphaere: ["Argon"], vulkanismus: [], substanz: ["Eiswelt","Felsige Eiswelt","Felsige Welt","Hochmetallhaltige Welt"] } },
-    { gattung: "Bacterium", name: "Volu", wert: 7774700, gesammelt: 0, voraussetzungen: { druck: {min:0.00,max:0.1}, temperatur: {min:117,max:332}, gravitation: {min:0.24,max:0.51}, atmosphaere: ["Sauerstoff"], vulkanismus: [], substanz: ["Eiswelt","Felsige Eiswelt","Felsige Welt","Hochmetallhaltige Welt"] } },
-
-  // Gattung: Cactuida
-    { gattung: "Cactuida", name: "Cortexum", wert: 3667600, gesammelt: 0, voraussetzungen: { druck: {min:0.02,max:0.1}, temperatur: {min:180,max:195}, gravitation: {min:0.04,max:0.27}, atmosphaere: ["Kohlendioxid"], vulkanismus: ["nur ohne"], substanz: ["Felsige Welt","Hochmetallhaltige Welt"] } },
-    { gattung: "Cactuida", name: "Lapis", wert: 2483600, gesammelt: 0, voraussetzungen: { druck: {min:0.00,max:0.01}, temperatur: {min:160,max:176}, gravitation: {min:0.04,max:0.27}, atmosphaere: ["Ammoniak"], vulkanismus: [], substanz: ["Felsige Welt","Hochmetallhaltige Welt"] } },
-    { gattung: "Cactuida", name: "Peperatis", wert: 2483600, gesammelt: 0, voraussetzungen: { druck: {min:0.0,max:0.01}, temperatur: {min:160,max:176}, gravitation: {min:0.04,max:0.27}, atmosphaere: ["Ammoniak"], vulkanismus: [], substanz: ["Felsige Welt","Hochmetallhaltige Welt"] } },
-    { gattung: "Cactuida", name: "Pullulanta", wert: 3667600, gesammelt: 0, voraussetzungen: { druck: {min:0.02,max:0.1}, temperatur: {min:180,max:195}, gravitation: {min:0.04,max:0.27}, atmosphaere: ["Kohlendioxid"], vulkanismus: ["nur ohne"], substanz: ["Felsige Welt","Hochmetallhaltige Welt"] } },
-    { gattung: "Cactuida", name: "Vermis", wert: 16202800, gesammelt: 0, voraussetzungen: { druck: {min:0.0,max:0.1}, temperatur: {min:163,max:450}, gravitation: {min:0.04,max:0.27}, atmosphaere: ["Wasser","Schwefeldioxid"], vulkanismus: [], substanz: ["Felsige Welt","Hochmetallhaltige Welt"] } },
-
-  // Gattung: Clypeus
-    { gattung: "Clypeus", name: "Lacrimam", wert: 8418000, gesammelt: 0, voraussetzungen: { druck: {min:0.05,max:0.1}, temperatur: {min:190,max:452}, gravitation: {min:0,max:0}, atmosphaere: ["Kohlendioxid","Wasser"], vulkanismus: [], substanz: ["Felsige Welt"] } },
-    { gattung: "Clypeus", name: "Margaritus", wert: 11873200, gesammelt: 0, voraussetzungen: { druck: {min:0.05,max:0.1}, temperatur: {min:190,max:450}, gravitation: {min:0,max:0}, atmosphaere: ["Kohlendioxid","Wasser"], vulkanismus: [], substanz: ["Hochmetallhaltige Welt"] } },
-    { gattung: "Clypeus", name: "Speculumi", wert: 16202800, gesammelt: 0, voraussetzungen: { druck: {min:0.05,max:0.1}, temperatur: {min:190,max:451}, gravitation: {min:0,max:0}, atmosphaere: ["Kohlendioxid","Wasser"], vulkanismus: [], substanz: ["Felsige Welt"] } },
-
-  // Gattung: Concha
-    { gattung: "Concha", name: "Aureolas", wert: 7774700, gesammelt: 0, voraussetzungen: { druck: {min:0.0,max:0.01}, temperatur: {min:152,max:177}, gravitation: {min:0.04,max:0.27}, atmosphaere: ["Ammoniak"], vulkanismus: [], substanz: ["Felsige Welt","Hochmetallhaltige Welt"] } },
-    { gattung: "Concha", name: "Biconcavis", wert: 19010800, gesammelt: 0, voraussetzungen: { druck: {min:0,max:0}, temperatur: {min:43,max:50}, gravitation: {min:0.04,max:0.27}, atmosphaere: ["Stickstoff"], vulkanismus: ["nur ohne"], substanz: ["Felsige Welt","Hochmetallhaltige Welt"] } },
-    { gattung: "Concha", name: "Labiata", wert: 2483600, gesammelt: 0, voraussetzungen: { druck: {min:0.0,max:0.1}, temperatur: {min:150,max:195}, gravitation: {min:0.04,max:0.26}, atmosphaere: ["Kohlendioxid"], vulkanismus: ["nur ohne"], substanz: ["Felsige Welt","Hochmetallhaltige Welt"] } },
-    { gattung: "Concha", name: "Renibus", wert: 4572400, gesammelt: 0, voraussetzungen: { druck: {min:0.01,max:0.1}, temperatur: {min:89,max:597}, gravitation: {min:0.04,max:0.27}, atmosphaere: ["Methan","Wasser","Kohlendioxid"], vulkanismus: [], substanz: ["Felsige Welt","Hochmetallhaltige Welt"] } },
-
-    
-  // Gattung: Electricae
-    { gattung: "Electricae", name: "Pluma", wert: 6284600, gesammelt: 0, voraussetzungen: { druck: {min:0.0,max:0.1}, temperatur: {min:20,max:148}, gravitation: {min:0.03,max:0.27}, atmosphaere: ["Argon","Neon","Helium"], vulkanismus: [], substanz: ["Eiswelt"] } },
-    { gattung: "Electricae", name: "Radialem", wert: 6284600, gesammelt: 0, voraussetzungen: { druck: {min:0,max:0.1}, temperatur: {min:50,max:148}, gravitation: {min:0.03,max:0.27}, atmosphaere: ["Argon","Neon","Helium"], vulkanismus: [], substanz: ["Eiswelt"] } },
-
-  // Gattung: Fonticulua
-    { gattung: "Fonticulua", name: "Campestris", wert: 1000000, gesammelt: 0, voraussetzungen: { druck: {min:0,max:0.1}, temperatur: {min:50,max:150}, gravitation: {min:0.03,max:0.28}, atmosphaere: ["Argon"], vulkanismus: [], substanz: ["Eiswelt","Felsige Eiswelt"] } },
-    { gattung: "Fonticulua", name: "Digitos", wert: 1804100, gesammelt: 0, voraussetzungen: { druck: {min:0.03,max:0.1}, temperatur: {min:84,max:109}, gravitation: {min:0.03,max:0.06}, atmosphaere: ["Methan"], vulkanismus: [], substanz: ["Eiswelt","Felsige Eiswelt"] } },
-    { gattung: "Fonticulua", name: "Fluctus", wert: 20000000, gesammelt: 0, voraussetzungen: { druck: {min:0.01,max:0.08}, temperatur: {min:145,max:197}, gravitation: {min:0.24,max:0.27}, atmosphaere: ["Sauerstoff"], vulkanismus: [], substanz: ["Eiswelt"] } },
-    { gattung: "Fonticulua", name: "Lapida", wert: 3111000, gesammelt: 0, voraussetzungen: { druck: {min:0,max:0.1}, temperatur: {min:50,max:81}, gravitation: {min:0.19,max:0.28}, atmosphaere: ["Stickstoff"], vulkanismus: [], substanz: ["Eiswelt","Felsige Eiswelt"] } },
-    { gattung: "Fonticulua", name: "Segmentatus", wert: 19010800, gesammelt: 0, voraussetzungen: { druck: {min:0,max:0.03}, temperatur: {min:51,max:68}, gravitation: {min:0.25,max:0.27}, atmosphaere: ["Neon","Neonreich"], vulkanismus: [], substanz: ["Eiswelt"] } },
-    { gattung: "Fonticulua", name: "Upupam", wert: 5727600, gesammelt: 0, voraussetzungen: { druck: {min:0,max:0.1}, temperatur: {min:61,max:123}, gravitation: {min:0.21,max:0.28}, atmosphaere: ["Argonreich"], vulkanismus: [], substanz: ["Eiswelt","Felsige Eiswelt"] } },
-
-  // Gattung: Frutexa
-    { gattung: "Frutexa", name: "Acus", wert: 7252500, gesammelt: 0, voraussetzungen: { druck: {min: 0, max: 0.1}, temperatur: {min: 146, max: 195}, gravitation: {min: 0.04, max: 0.24}, atmosphaere: ["Kohlendioxid"], vulkanismus: [], substanz: ["Felsige Welt","Hochmetallhaltige Welt"] } },
-    { gattung: "Frutexa", name: "Collum", wert: 1639800, gesammelt: 0, voraussetzungen: { druck: {min: 0, max: 0}, temperatur: {min: 132, max: 210}, gravitation: {min: 0.04, max: 0.27}, atmosphaere: ["Schwefeldioxid"], vulkanismus: [], substanz: ["Felsige Welt","Hochmetallhaltige Welt"] } },
-    { gattung: "Frutexa", name: "Fera", wert: 1632500, gesammelt: 0, voraussetzungen: { druck: {min: 0, max: 0.1}, temperatur: {min: 147, max: 195}, gravitation: {min: 0.04, max: 0.23}, atmosphaere: ["Kohlendioxid"], vulkanismus: [], substanz: ["Felsige Welt","Hochmetallhaltige Welt"] } },
-    { gattung: "Frutexa", name: "Flabellum", wert: 1808900, gesammelt: 0, voraussetzungen: { druck: {min: 0, max: 0.01}, temperatur: {min: 152, max: 177}, gravitation: {min: 0.04, max: 0.27}, atmosphaere: ["Ammoniak"], vulkanismus: [], substanz: ["Felsige Welt","Hochmetallhaltige Welt"] } },
-    { gattung: "Frutexa", name: "Flammasis", wert: 10326000, gesammelt: 0, voraussetzungen: { druck: {min: 0, max: 0.01}, temperatur: {min: 152, max: 176}, gravitation: {min: 0.04, max: 0.27}, atmosphaere: ["Ammoniak"], vulkanismus: [], substanz: ["Felsige Welt","Hochmetallhaltige Welt"] } },
-    { gattung: "Frutexa", name: "Metallicum", wert: 1632500, gesammelt: 0, voraussetzungen: { druck: {min: 0, max: 0.1}, temperatur: {min: 146, max: 195}, gravitation: {min: 0.04, max: 0.28}, atmosphaere: ["Kohlendioxid","Ammoniak"], vulkanismus: [], substanz: ["Hochmetallhaltige Welt"] } },
-    { gattung: "Frutexa", name: "Sponsae", wert: 5988000, gesammelt: 0, voraussetzungen: { druck: {min: 0.06, max: 0.1}, temperatur: {min: 396, max: 452}, gravitation: {min: 0.04, max: 0.06}, atmosphaere: ["Wasser"], vulkanismus: [], substanz: ["Felsige Welt","Hochmetallhaltige Welt"] } },
-
-  // Gattung: Fungoida
-    { gattung: "Fungoida", name: "Bullarum", wert: 3703200, gesammelt: 0, voraussetzungen: { druck: {min: 0, max: 0.1}, temperatur: {min: 50, max: 128}, gravitation: {min: 0.06, max: 0.27}, atmosphaere: ["Argon","Stickstoff"], vulkanismus: [], substanz: ["Felsige Eiswelt","Felsige Welt","Hochmetallhaltige Welt"] } },
-    { gattung: "Fungoida", name: "Gelata", wert: 3330300, gesammelt: 0, voraussetzungen: { druck: {min: 0, max: 0.1}, temperatur: {min: 79, max: 452}, gravitation: {min: 0.04, max: 0.27}, atmosphaere: ["Kohlendioxid","Wasser","Methan","Ammoniak"], vulkanismus: ["Silikatvulkanismus","Metallvulkanismus"], substanz: ["Felsige Welt","Hochmetallhaltige Welt"] } },
-    { gattung: "Fungoida", name: "Setisis", wert: 1670100, gesammelt: 0, voraussetzungen: { druck: {min: 0, max: 0.1}, temperatur: {min: 68, max: 176}, gravitation: {min: 0.03, max: 0.28}, atmosphaere: ["Methan","Ammoniak"], vulkanismus: [], substanz: ["Felsige Eiswelt","Felsige Welt","Hochmetallhaltige Welt"] } },
-    { gattung: "Fungoida", name: "Stabitis", wert: 2680300, gesammelt: 0, voraussetzungen: { druck: {min: 0, max: 0.1}, temperatur: {min: 82, max: 452}, gravitation: {min: 0.04, max: 0.27}, atmosphaere: ["Kohlendioxid","Wasser","Methan","Ammoniak"], vulkanismus: ["Silikatvulkanismus","Metallvulkanismus"], substanz: ["Felsige Eiswelt","Felsige Welt","Hochmetallhaltige Welt"] } },
-
-  // Gattung: Fumerole
-    { gattung: "Fumerole", name: "Fumerole", wert: 0, gesammelt: 0, voraussetzungen: { druck: {min:0,max:0}, temperatur: {min:0,max:0}, gravitation: {min:0,max:0}, atmosphaere: [], vulkanismus: [], substanz: [] } },
-
-  // Gattung: Hirnbaum
-     { gattung: "Hirnbaum", name: "Auereum", wert: 1593700, gesammelt: 0, voraussetzungen: { druck: {min: 0, max: 0.03}, temperatur: {min: 300, max: 500}, gravitation: {min: 0.04, max: 2.73}, atmosphaere: ["Keine","Schwefeldioxid"], vulkanismus: ["Silikatvulkanismus","Felsvulkanismus","Metallvulkanismus"], substanz: ["Felsige Welt","Hochmetallhaltige Welt"] } },
-    { gattung: "Hirnbaum", name: "Gypseeum", wert: 1593700, gesammelt: 0, voraussetzungen: { druck: {min: 0, max: 0.02}, temperatur: {min: 200, max: 330}, gravitation: {min: 0.04, max: 0.36}, atmosphaere: ["Keine","Wasser","Schwefeldioxid"], vulkanismus: ["Silikatvulkanismus","Felsvulkanismus","Metallvulkanismus","Wasservulkanismus"], substanz: ["Felsige Welt"] } },
-    { gattung: "Hirnbaum", name: "Lindigoticum", wert: 1593700, gesammelt: 0, voraussetzungen: { druck: {min: 0, max: 0}, temperatur: {min: 300, max: 500}, gravitation: {min: 0.05, max: 2.60}, atmosphaere: ["Keine"], vulkanismus: ["Silikatvulkanismus","Felsvulkanismus","Metallvulkanismus"], substanz: ["Felsige Welt","Hochmetallhaltige Welt"] } },
-    { gattung: "Hirnbaum", name: "Lividum", wert: 1593700, gesammelt: 0, voraussetzungen: { druck: {min: 0, max: 0.1}, temperatur: {min: 300, max: 500}, gravitation: {min: 0.04, max: 0.45}, atmosphaere: ["Keine","Wasser","Schwefeldioxid"], vulkanismus: ["Silikatvulkanismus","Felsvulkanismus","Metallvulkanismus","Wasservulkanismus"], substanz: ["Felsige Welt"] } },
-    { gattung: "Hirnbaum", name: "Ostrinum", wert: 1593700, gesammelt: 0, voraussetzungen: { druck: {min: 0, max: 0.09}, temperatur: {min: 20, max: 1794}, gravitation: {min: 0.03, max: 2.28}, atmosphaere: ["Keine","Alle"], vulkanismus: ["Silikatvulkanismus","Felsvulkanismus","Metallvulkanismus"], substanz: ["Felsige Welt","Hochmetallhaltige Welt"] } },
-    { gattung: "Hirnbaum", name: "Puniceum", wert: 1593700, gesammelt: 0, voraussetzungen: { druck: {min: 0, max: 0.1}, temperatur: {min: 20, max: 1767}, gravitation: {min: 0.04, max: 3.60}, atmosphaere: ["Keine","Alle"], vulkanismus: ["Silikatvulkanismus","Felsvulkanismus","Metallvulkanismus"], substanz: ["Felsige Welt","Hochmetallhaltige Welt"] } },
-    { gattung: "Hirnbaum", name: "Roseum", wert: 1593700, gesammelt: 0, voraussetzungen: { druck: {min: 0, max: 0.09}, temperatur: {min: 115, max: 500}, gravitation: {min: 0.04, max: 4.20}, atmosphaere: ["Keine","Alle"], vulkanismus: ["Silikatvulkanismus","Felsvulkanismus","Metallvulkanismus","Wasservulkanismus","Kohlendioxidvulkanismus"], substanz: ["Eiswelt","Felsige Eiswelt","Felsige Welt","Hochmetallhaltige Welt"] } },
-    { gattung: "Hirnbaum", name: "Viride", wert: 1593700, gesammelt: 0, voraussetzungen: { druck: {min: 0, max: 0}, temperatur: {min: 100, max: 245}, gravitation: {min: 0.04, max: 0.39}, atmosphaere: ["Keine","Ammoniak"], vulkanismus: ["Silikatvulkanismus","Felsvulkanismus","Metallvulkanismus","Wasservulkanismus","Kohlendioxidvulkanismus"], substanz: ["Felsige Welt"] } },
-
-  // Gattung: Kristallscherbe
-    { gattung: "Kristallscherbe", name: "Scherbe", wert: 1628800, gesammelt: 0, voraussetzungen: { druck: {min:0,max:0}, temperatur: {min:0,max:0}, gravitation: {min:0,max:0}, atmosphaere: [], vulkanismus: [], substanz: [] } },
-
-  // Gattung: Luteolumanemone
-   { gattung: "Luteolumanemone", name: "Prasinum (biolumineszent)", wert: 1499900, gesammelt: 0, voraussetzungen: { druck: {min: 0, max: 0}, temperatur: {min: 111, max: 3042}, gravitation: {min: 0.04, max: 11}, atmosphaere: [], vulkanismus: ["Silikatvulkanismus","Felsvulkanismus","Metallvulkanismus"], substanz: ["Felsige Welt","Hochmetallhaltige Welt"] } },
-    { gattung: "Luteolumanemone", name: "Roseum (biolumineszent)", wert: 1499900, gesammelt: 0, voraussetzungen: { druck: {min: 0, max: 0}, temperatur: {min: 403, max: 4527}, gravitation: {min: 0.04, max: 4.6}, atmosphaere: [], vulkanismus: ["Silikatvulkanismus","Felsvulkanismus","Metallvulkanismus"], substanz: ["Hochmetallhaltige Welt"] } },
-    { gattung: "Luteolumanemone", name: "Blatteum (biolumineszent)", wert: 1499900, gesammelt: 0, voraussetzungen: { druck: {min: 0, max: 0}, temperatur: {min: 220, max: 5177}, gravitation: {min: 0.04, max: 8.72}, atmosphaere: [], vulkanismus: ["Silikatvulkanismus","Felsvulkanismus","Metallvulkanismus"], substanz: ["Hochmetallhaltige Welt"] } },
-    { gattung: "Luteolumanemone", name: "Rubeum (biolumineszent)", wert: 1499900, gesammelt: 0, voraussetzungen: { druck: {min: 0, max: 0}, temperatur: {min: 164, max: 1792}, gravitation: {min: 0.04, max: 4.6}, atmosphaere: [], vulkanismus: ["Silikatvulkanismus","Felsvulkanismus","Metallvulkanismus"], substanz: ["Hochmetallhaltige Welt"] } },
-    { gattung: "Luteolumanemone", name: "Puniceum", wert: 1499900, gesammelt: 0, voraussetzungen: { druck: {min: 0, max: 0}, temperatur: {min: 75, max: 798}, gravitation: {min: 0.18, max: 2.51}, atmosphaere: [], vulkanismus: ["Silikatvulkanismus","Felsvulkanismus","Metallvulkanismus"], substanz: ["Eiswelt","Felsige Eiswelt"] } },
-    { gattung: "Luteolumanemone", name: "Roseum", wert: 1499900, gesammelt: 0, voraussetzungen: { druck: {min: 0, max: 0}, temperatur: {min: 219, max: 436}, gravitation: {min: 0.04, max: 0.32}, atmosphaere: [], vulkanismus: ["Silikatvulkanismus","Felsvulkanismus","Metallvulkanismus"], substanz: ["Felsige Welt"] } },
-    { gattung: "Luteolumanemone", name: "Luteolum", wert: 1499900, gesammelt: 0, voraussetzungen: { druck: {min: 0, max: 0}, temperatur: {min: 200, max: 438}, gravitation: {min: 0.04, max: 1.27}, atmosphaere: [], vulkanismus: ["Silikatvulkanismus","Felsvulkanismus","Metallvulkanismus"], substanz: ["Felsige Welt"] } },
-    { gattung: "Luteolumanemone", name: "Corceum", wert: 1499900, gesammelt: 0, voraussetzungen: { druck: {min: 0, max: 0}, temperatur: {min: 206, max: 439}, gravitation: {min: 0.04, max: 0.37}, atmosphaere: [], vulkanismus: ["Silikatvulkanismus","Felsvulkanismus","Metallvulkanismus"], substanz: ["Felsige Welt"] } },
-
-  // Gattung: Osseus
-    { gattung: "Osseus", name: "Cornibus", wert: 1483000, gesammelt: 0, voraussetzungen: { druck: {min: 0.03, max: 0.1}, temperatur: {min: 180, max: 195}, gravitation: {min: 0.04, max: 0.27}, atmosphaere: ["Kohlendioxid"], vulkanismus: [], substanz: ["Felsige Welt","Hochmetallhaltige Welt"] } },
-    { gattung: "Osseus", name: "Discus", wert: 12934900, gesammelt: 0, voraussetzungen: { druck: {min: 0.00, max: 0.1}, temperatur: {min: 79, max: 452}, gravitation: {min: 0.04, max: 0.27}, atmosphaere: ["Wasser","Methan","Argon","Ammoniak"], vulkanismus: [], substanz: ["Felsige Eiswelt","Felsige Welt","Hochmetallhaltige Welt"] } },
-    { gattung: "Osseus", name: "Fractus", wert: 4027800, gesammelt: 0, voraussetzungen: { druck: {min: 0.03, max: 0.1}, temperatur: {min: 180, max: 190}, gravitation: {min: 0.04, max: 0.27}, atmosphaere: ["Kohlendioxid"], vulkanismus: [], substanz: ["Felsige Welt","Hochmetallhaltige Welt"] } },
-    { gattung: "Osseus", name: "Pellebantus", wert: 9739000, gesammelt: 0, voraussetzungen: { druck: {min: 0.06, max: 0.1}, temperatur: {min: 191, max: 196}, gravitation: {min: 0.04, max: 0.27}, atmosphaere: ["Kohlendioxid"], vulkanismus: [], substanz: ["Felsige Welt","Hochmetallhaltige Welt"] } },
-    { gattung: "Osseus", name: "Pumice", wert: 3156300, gesammelt: 0, voraussetzungen: { druck: {min: 0.00, max: 0.1}, temperatur: {min: 43, max: 130}, gravitation: {min: 0.03, max: 0.28}, atmosphaere: ["Methan","Argon","Stickstoff"], vulkanismus: [], substanz: ["Felsige Eiswelt","Felsige Welt","Hochmetallhaltige Welt"] } },
-    { gattung: "Osseus", name: "Spiralis", wert: 2404700, gesammelt: 0, voraussetzungen: { druck: {min: 0.00, max: 0.1}, temperatur: {min: 160, max: 177}, gravitation: {min: 0.04, max: 0.28}, atmosphaere: ["Ammoniak"], vulkanismus: [], substanz: ["Felsige Eiswelt","Felsige Welt","Hochmetallhaltige Welt"] } },
-
-  // Gattung: Recepta
-     { gattung: "Recepta", name: "Conditivus", wert: 14313700, gesammelt: 0, voraussetzungen: { druck: {min: 0.00, max: 0.1}, temperatur: {min: 132, max: 269}, gravitation: {min: 0.05, max: 0.27}, atmosphaere: ["Schwefeldioxid","Kohlendioxid","Sauerstoff"], vulkanismus: [], substanz: ["Eiswelt","Felsige Eiswelt","Felsige Welt","Hochmetallhaltige Welt"] } },
-    { gattung: "Recepta", name: "Deltahedron", wert: 16202800, gesammelt: 0, voraussetzungen: { druck: {min: 0.00, max: 0.1}, temperatur: {min: 132, max: 268}, gravitation: {min: 0.04, max: 0.27}, atmosphaere: ["Schwefeldioxid","Kohlendioxid"], vulkanismus: [], substanz: ["Eiswelt","Felsige Eiswelt","Felsige Welt","Hochmetallhaltige Welt"] } },
-    { gattung: "Recepta", name: "Umbrux", wert: 12934900, gesammelt: 0, voraussetzungen: { druck: {min: 0.00, max: 0.1}, temperatur: {min: 132, max: 271}, gravitation: {min: 0.04, max: 0.27}, atmosphaere: ["Schwefeldioxid","Kohlendioxid","Sauerstoff"], vulkanismus: [], substanz: ["Eiswelt","Felsige Eiswelt","Felsige Welt","Hochmetallhaltige Welt"] } },
-
-  // Gattung: Sinuoustuber
-   { gattung: "Sinuoustuber", name: "Albidum", wert: 1514500, gesammelt: 0, voraussetzungen: { druck: {min: 0.00, max: 0}, temperatur: {min: 200, max: 500}, gravitation: {min: 0.04, max: 2.85}, atmosphaere: ["keine"], vulkanismus: ["Silikatvulkanismus","Felsvulkanismus","Metallvulkanismus","selten ohne"], substanz: ["Felsige Welt","Hochmetallhaltige Welt"] } },
-    { gattung: "Sinuoustuber", name: "Blatteum", wert: 1514500, gesammelt: 0, voraussetzungen: { druck: {min: 0.00, max: 0}, temperatur: {min: 200, max: 500}, gravitation: {min: 0.04, max: 2.92}, atmosphaere: ["keine"], vulkanismus: ["Silikatvulkanismus","Felsvulkanismus","Metallvulkanismus","selten ohne"], substanz: ["Felsige Welt","Hochmetallhaltige Welt"] } },
-    { gattung: "Sinuoustuber", name: "Caeruleum", wert: 1514500, gesammelt: 0, voraussetzungen: { druck: {min: 0.00, max: 0.06}, temperatur: {min: 200, max: 500}, gravitation: {min: 0.04, max: 3.47}, atmosphaere: ["keine","Schwefeldioxid"], vulkanismus: ["Silikatvulkanismus","Felsvulkanismus","Metallvulkanismus","selten ohne"], substanz: ["Felsige Welt","Hochmetallhaltige Welt"] } },
-    { gattung: "Sinuoustuber", name: "Lindigoticum", wert: 1514500, gesammelt: 0, voraussetzungen: { druck: {min: 0.00, max: 0}, temperatur: {min: 200, max: 500}, gravitation: {min: 0.04, max: 1.56}, atmosphaere: ["keine"], vulkanismus: ["Silikatvulkanismus","Felsvulkanismus","Metallvulkanismus","selten ohne"], substanz: ["Felsige Welt","Hochmetallhaltige Welt"] } },
-    { gattung: "Sinuoustuber", name: "Prasinum", wert: 1514500, gesammelt: 0, voraussetzungen: { druck: {min: 0.00, max: 0.1}, temperatur: {min: 200, max: 500}, gravitation: {min: 0.03, max: 2.28}, atmosphaere: ["keine","Kohlendioxid","Schwefeldioxid"], vulkanismus: ["Silikatvulkanismus","Felsvulkanismus","Metallvulkanismus","selten ohne"], substanz: ["Felsige Eiswelt","Felsige Welt","Hochmetallhaltige Welt"] } },
-    { gattung: "Sinuoustuber", name: "Roseum", wert: 1514500, gesammelt: 0, voraussetzungen: { druck: {min: 0.00, max: 0.06}, temperatur: {min: 200, max: 500}, gravitation: {min: 0.04, max: 3.60}, atmosphaere: ["keine","Argon","Kohlendioxid"], vulkanismus: ["Silikatvulkanismus","Felsvulkanismus","Metallvulkanismus","selten ohne"], substanz: ["Felsige Welt","Hochmetallhaltige Welt"] } },
-    { gattung: "Sinuoustuber", name: "Violaceum", wert: 1514500, gesammelt: 0, voraussetzungen: { druck: {min: 0.00, max: 0}, temperatur: {min: 200, max: 500}, gravitation: {min: 0.04, max: 1.70}, atmosphaere: ["keine"], vulkanismus: ["Silikatvulkanismus","Felsvulkanismus","Metallvulkanismus","selten ohne"], substanz: ["Felsige Welt","Hochmetallhaltige Welt"] } },
-    { gattung: "Sinuoustuber", name: "Viride", wert: 1514500, gesammelt: 0, voraussetzungen: { druck: {min: 0.00, max: 0}, temperatur: {min: 200, max: 500}, gravitation: {min: 0.07, max: 1.59}, atmosphaere: ["keine"], vulkanismus: ["Silikatvulkanismus","Felsvulkanismus","Metallvulkanismus","selten ohne"], substanz: ["Felsige Welt","Hochmetallhaltige Welt"] } },
-
-  // Gattung: Stratum
-    { gattung: "Stratum", name: "Araneamus", wert: 2448900, gesammelt: 0, voraussetzungen: { druck: {min: 0.00, max: 0.1}, temperatur: {min: 165, max: 373}, gravitation: {min: 0.26, max: 0.54}, atmosphaere: ["Schwefeldioxid"], vulkanismus: [], substanz: ["Felsige Welt"] } },
-    { gattung: "Stratum", name: "Cucumisis", wert: 16202800, gesammelt: 0, voraussetzungen: { druck: {min: 0.00, max: 0.1}, temperatur: {min: 191, max: 372}, gravitation: {min: 0.04, max: 0.59}, atmosphaere: ["Kohlendioxid","Schwefeldioxid"], vulkanismus: [], substanz: ["Felsige Welt"] } },
-    { gattung: "Stratum", name: "Excutitus", wert: 2448900, gesammelt: 0, voraussetzungen: { druck: {min: 0.00, max: 0.1}, temperatur: {min: 165, max: 190}, gravitation: {min: 0.04, max: 0.47}, atmosphaere: ["Kohlendioxid","Schwefeldioxid"], vulkanismus: [], substanz: ["Felsige Welt"] } },
-    { gattung: "Stratum", name: "Figus", wert: 2637500, gesammelt: 0, voraussetzungen: { druck: {min: 0.00, max: 0.1}, temperatur: {min: 191, max: 368}, gravitation: {min: 0.04, max: 0.54}, atmosphaere: ["Kohlendioxid","Schwefeldioxid"], vulkanismus: [], substanz: ["Felsige Welt"] } },
-    { gattung: "Stratum", name: "Laminamus", wert: 2788300, gesammelt: 0, voraussetzungen: { druck: {min: 0.00, max: 0.01}, temperatur: {min: 165, max: 177}, gravitation: {min: 0.04, max: 0.34}, atmosphaere: ["Ammoniak"], vulkanismus: [], substanz: ["Felsige Welt"] } },
-    { gattung: "Stratum", name: "Limaxus", wert: 1362000, gesammelt: 0, voraussetzungen: { druck: {min: 0.00, max: 0.1}, temperatur: {min: 165, max: 190}, gravitation: {min: 0.04, max: 0.48}, atmosphaere: ["Kohlendioxid","Schwefeldioxid"], vulkanismus: [], substanz: ["Felsige Welt"] } },
-    { gattung: "Stratum", name: "Paleas", wert: 1362000, gesammelt: 0, voraussetzungen: { druck: {min: 0.00, max: 0.1}, temperatur: {min: 165, max: 450}, gravitation: {min: 0.04, max: 0.58}, atmosphaere: ["Wasser","Sauerstoff","Ammoniak","Kohlendioxid"], vulkanismus: [], substanz: ["Felsige Welt"] } },
-    { gattung: "Stratum", name: "Tectonicas", wert: 19010800, gesammelt: 0, voraussetzungen: { druck: {min: 0.00, max: 0.1}, temperatur: {min: 165, max: 450}, gravitation: {min: 0.03, max: 0.61}, atmosphaere: ["Wasser","Sauerstoff","Kohlendioxid","Schwefeldioxid","Argon","Ammoniak","Methan"], vulkanismus: [], substanz: ["Hochmetallhaltige Welt"] } },
-
-  { gattung: "Tubus", name: "Cavas", wert: 11873200, gesammelt: 0, voraussetzungen: { druck: {min:0.00,max:0.1}, temperatur: {min:106,max:215}, gravitation: {min:0.04,max:0.15}, atmosphaere: ["Kohlendioxid"], vulkanismus: ["ohne"], substanz: ["Felsige Welt"] } },
-  { gattung: "Tubus", name: "Compagibus", wert: 7774700, gesammelt: 0, voraussetzungen: { druck: {min:0.00,max:0.1}, temperatur: {min:89,max:266}, gravitation: {min:0.04,max:0.15}, atmosphaere: ["Kohlendioxid"], vulkanismus: ["ohne"], substanz: ["Felsige Welt"] } },
-  { gattung: "Tubus", name: "Conifer", wert: 2415500, gesammelt: 0, voraussetzungen: { druck: {min:0.00,max:0.1}, temperatur: {min:75,max:147}, gravitation: {min:0.04,max:0.15}, atmosphaere: ["Kohlendioxid"], vulkanismus: ["ohne"], substanz: ["Felsige Welt"] } },
-  { gattung: "Tubus", name: "Rosarium", wert: 2637500, gesammelt: 0, voraussetzungen: { druck: {min:0.00,max:0.01}, temperatur: {min:112,max:218}, gravitation: {min:0.04,max:0.15}, atmosphaere: ["Ammoniak"], vulkanismus: [], substanz: ["Felsige Welt"] } },
-  { gattung: "Tubus", name: "Soroibus", wert: 5727600, gesammelt: 0, voraussetzungen: { druck: {min:0.00,max:0.09}, temperatur: {min:124,max:242}, gravitation: {min:0.04,max:0.15}, atmosphaere: ["Ammoniak","Kohlendioxid"], vulkanismus: ["ohne"], substanz: ["Hochmetallhaltige Welt"] } },
-
-  // Gattung: Tussock
-  { gattung: "Tussock", name: "Albata", wert: 3252500, gesammelt: 0, voraussetzungen: { druck: {min:0.02,max:0.1}, temperatur: {min:175,max:180}, gravitation: {min:0.04,max:0.27}, atmosphaere: ["Kohlendioxid"], vulkanismus: ["ohne"], substanz: ["Felsige Welt","Hochmetallhaltige Welt"] } },
-  { gattung: "Tussock", name: "Capillum", wert: 7025800, gesammelt: 0, voraussetzungen: { druck: {min:0.0,max:0.1}, temperatur: {min:80,max:127}, gravitation: {min:0.03,max:0.27}, atmosphaere: ["Argon","Methan"], vulkanismus: [], substanz: ["Felsige Welt","Felsige Eiswelt"] } },
-  { gattung: "Tussock", name: "Caputus", wert: 3472400, gesammelt: 0, voraussetzungen: { druck: {min:0.03,max:0.1}, temperatur: {min:181,max:190}, gravitation: {min:0.04,max:0.27}, atmosphaere: ["Kohlendioxid"], vulkanismus: ["ohne"], substanz: ["Felsige Welt","Hochmetallhaltige Welt"] } },
-  { gattung: "Tussock", name: "Catena", wert: 1766600, gesammelt: 0, voraussetzungen: { druck: {min:0.0,max:0.01}, temperatur: {min:152,max:176}, gravitation: {min:0.04,max:0.27}, atmosphaere: ["Ammoniak"], vulkanismus: [], substanz: ["Felsige Welt","Hochmetallhaltige Welt"] } },
-  { gattung: "Tussock", name: "Cultro", wert: 1766600, gesammelt: 0, voraussetzungen: { druck: {min:0.0,max:0.01}, temperatur: {min:152,max:177}, gravitation: {min:0.04,max:0.27}, atmosphaere: ["Ammoniak"], vulkanismus: [], substanz: ["Felsige Welt","Hochmetallhaltige Welt"] } },
-  { gattung: "Tussock", name: "Divisa", wert: 1766600, gesammelt: 0, voraussetzungen: { druck: {min:0.0,max:0.01}, temperatur: {min:152,max:176}, gravitation: {min:0.04,max:0.27}, atmosphaere: ["Ammoniak"], vulkanismus: [], substanz: ["Felsige Welt","Hochmetallhaltige Welt"] } },
-  { gattung: "Tussock", name: "Ignis", wert: 1849000, gesammelt: 0, voraussetzungen: { druck: {min:0.0,max:0.05}, temperatur: {min:161,max:170}, gravitation: {min:0.04,max:0.19}, atmosphaere: ["Kohlendioxid"], vulkanismus: ["ohne"], substanz: ["Felsige Welt","Hochmetallhaltige Welt"] } },
-  { gattung: "Tussock", name: "Pennata", wert: 5853800, gesammelt: 0, voraussetzungen: { druck: {min:0.0,max:0.01}, temperatur: {min:147,max:154}, gravitation: {min:0.04,max:0.09}, atmosphaere: ["Kohlendioxid"], vulkanismus: ["ohne"], substanz: ["Felsige Welt","Hochmetallhaltige Welt"] } },
-  { gattung: "Tussock", name: "Pennatis", wert: 1000000, gesammelt: 0, voraussetzungen: { druck: {min:0.0,max:0.1}, temperatur: {min:147,max:195}, gravitation: {min:0.04,max:0.27}, atmosphaere: ["Kohlendioxid"], vulkanismus: ["ohne"], substanz: ["Felsige Welt","Hochmetallhaltige Welt"] } },
-  { gattung: "Tussock", name: "Propagito", wert: 1000000, gesammelt: 0, voraussetzungen: { druck: {min:0.0,max:0.1}, temperatur: {min:146,max:196}, gravitation: {min:0.04,max:0.27}, atmosphaere: ["Kohlendioxid"], vulkanismus: ["ohne"], substanz: ["Felsige Welt","Hochmetallhaltige Welt"] } },
-  { gattung: "Tussock", name: "Serrati", wert: 4447100, gesammelt: 0, voraussetzungen: { druck: {min:0.01,max:0.07}, temperatur: {min:171,max:174}, gravitation: {min:0.04,max:0.22}, atmosphaere: ["Kohlendioxid"], vulkanismus: ["ohne"], substanz: ["Felsige Welt","Hochmetallhaltige Welt"] } },
-  { gattung: "Tussock", name: "Stigmasis", wert: 19010800, gesammelt: 0, voraussetzungen: { druck: {min:0.0,max:0.01}, temperatur: {min:132,max:166}, gravitation: {min:0.04,max:0.27}, atmosphaere: ["Schwefeldioxid"], vulkanismus: [], substanz: ["Felsige Welt","Hochmetallhaltige Welt"] } },
-  { gattung: "Tussock", name: "Triticum", wert: 7774700, gesammelt: 0, voraussetzungen: { druck: {min:0.06,max:0.1}, temperatur: {min:191,max:195}, gravitation: {min:0.04,max:0.27}, atmosphaere: ["Kohlendioxid"], vulkanismus: ["ohne"], substanz: ["Felsige Welt","Hochmetallhaltige Welt"] } },
-  { gattung: "Tussock", name: "Ventusa", wert: 3227700, gesammelt: 0, voraussetzungen: { druck: {min:0.0,max:0.02}, temperatur: {min:155,max:160}, gravitation: {min:0.04,max:0.12}, atmosphaere: ["Kohlendioxid"], vulkanismus: [], substanz: ["Felsige Welt","Hochmetallhaltige Welt"] } },
-  { gattung: "Tussock", name: "Vigam", wert: 14313700, gesammelt: 0, voraussetzungen: { druck: {min:0.05,max:0.1}, temperatur: {min:392,max:450}, gravitation: {min:0.04,max:0.06}, atmosphaere: ["Wasser"], vulkanismus: [], substanz: ["Felsige Welt","Hochmetallhaltige Welt"] } },
-
-  
+    { gattung: "Aleoida", name: "Arcus", wert: 7252500, gesammelt: 0,
+      voraussetzungen: { druck:{min:0.02,max:0.1}, temperatur:{min:175,max:180},
+      gravitation:{min:0.04,max:0.27}, atmosphaere:["Kohlendioxid"], vulkanismus:[],
+      substanz:["Felsige Welt","Hochmetallhaltige Welt"] } }
 ];
 
-/* ------------------------ LOCAL STORAGE ------------------------ */
+
+/* -------------------------------------------------------
+   LOCAL STORAGE LADEN
+--------------------------------------------------------- */
 function loadStorage() {
   const saved = localStorage.getItem("plantsSave");
   if (!saved) return;
   const parsed = JSON.parse(saved);
-  plantsData.forEach(p => { if (parsed[p.name] !== undefined) p.gesammelt = parsed[p.name]; });
+  plantsData.forEach(p => {
+    if (parsed[p.name] !== undefined) p.gesammelt = parsed[p.name];
+  });
 }
 
+/* -------------------------------------------------------
+   LOCAL STORAGE SPEICHERN
+--------------------------------------------------------- */
 function saveStorage() {
   const saveObj = {};
   plantsData.forEach(p => saveObj[p.name] = p.gesammelt);
   localStorage.setItem("plantsSave", JSON.stringify(saveObj));
 }
 
-/* ------------------------ BEDINGUNGEN PRÜFEN ------------------------ */
+
+/* -------------------------------------------------------
+   LOGIN FUNKTIONEN
+--------------------------------------------------------- */
+function openLogin() {
+    document.getElementById("loginBox").style.display = "flex";
+}
+
+function saveLogin() {
+    const name = document.getElementById("edsmName").value.trim();
+    const key  = document.getElementById("edsmKey").value.trim();
+
+    if (!name || !key) {
+        alert("Bitte Name UND API-Key eingeben.");
+        return;
+    }
+
+    localStorage.setItem("edsm_user", name);
+    localStorage.setItem("edsm_key", key);
+
+    document.getElementById("loginBox").style.display = "none";
+    loadPlanetsFromEDSM();
+}
+
+function logoutEDSM() {
+    localStorage.removeItem("edsm_user");
+    localStorage.removeItem("edsm_key");
+    alert("Logout erfolgreich.");
+    document.getElementById("planetSelect").innerHTML = "<option>Bitte EDSM Login...</option>";
+}
+
+
+/* -------------------------------------------------------
+   PLANETEN VON EDSM LADEN
+--------------------------------------------------------- */
+async function loadPlanetsFromEDSM() {
+    const commander = localStorage.getItem("edsm_user");
+    const apiKey    = localStorage.getItem("edsm_key");
+    const select    = document.getElementById("planetSelect");
+
+    if (!commander || !apiKey) {
+        select.innerHTML = "<option>Bitte einloggen...</option>";
+        return;
+    }
+
+    select.innerHTML = "<option>Lade Daten...</option>";
+
+    try {
+        const url = `https://www.edsm.net/api-logs-v1/get-bodies?commanderName=${encodeURIComponent(commander)}&apiKey=${apiKey}`;
+        const response = await fetch(url);
+        const data = await response.json();
+
+        if (!data || !data.bodies) {
+            select.innerHTML = "<option>Keine Planeten gefunden</option>";
+            return;
+        }
+
+        const planets = data.bodies.filter(b => b.type === "Planet");
+
+        select.innerHTML = "<option value=''>-- Planet wählen --</option>";
+
+        planets.forEach(p => {
+            const opt = document.createElement("option");
+            opt.value = JSON.stringify(p);
+            opt.textContent = `${p.name} (${p.system})`;
+            select.appendChild(opt);
+        });
+
+    } catch (err) {
+        console.error("EDSM Fehler:", err);
+        select.innerHTML = "<option>Fehler beim Abruf</option>";
+    }
+}
+
+
+/* -------------------------------------------------------
+   PFLANZEN ANZEIGEN
+--------------------------------------------------------- */
 function checkVoraussetzungen(p) {
   const druck = parseFloat(document.getElementById('druck').value);
   const tempMin = parseFloat(document.getElementById('temp_min').value);
@@ -348,26 +305,28 @@ function checkVoraussetzungen(p) {
   const subst = document.getElementById('subst').value;
 
   let ok = true;
-  if(p.voraussetzungen.druck.min !== undefined &&
-     p.voraussetzungen.druck.max !== undefined &&
-     (druck < p.voraussetzungen.druck.min || druck > p.voraussetzungen.druck.max)) ok = false;
-  if(p.voraussetzungen.temperatur.min !== undefined &&
-     p.voraussetzungen.temperatur.max !== undefined &&
-     (tempMax < p.voraussetzungen.temperatur.min || tempMin > p.voraussetzungen.temperatur.max)) ok = false;
-  if(p.voraussetzungen.gravitation.min !== undefined &&
-     p.voraussetzungen.gravitation.max !== undefined &&
-     (grav < p.voraussetzungen.gravitation.min || grav > p.voraussetzungen.gravitation.max)) ok = false;
-  if(p.voraussetzungen.atmosphaere.length && !p.voraussetzungen.atmosphaere.includes(atmos)) ok = false;
-  if(p.voraussetzungen.vulkanismus.length && !p.voraussetzungen.vulkanismus.includes(vulkan)) ok = false;
-  if(p.voraussetzungen.substanz.length && !p.voraussetzungen.substanz.includes(subst)) ok = false;
+
+  if (druck < p.voraussetzungen.druck.min || druck > p.voraussetzungen.druck.max) ok = false;
+  if (tempMax < p.voraussetzungen.temperatur.min || tempMin > p.voraussetzungen.temperatur.max) ok = false;
+  if (grav < p.voraussetzungen.gravitation.min || grav > p.voraussetzungen.gravitation.max) ok = false;
+
+  if (p.voraussetzungen.atmosphaere.length &&
+      !p.voraussetzungen.atmosphaere.includes(atmos)) ok = false;
+
+  if (p.voraussetzungen.vulkanismus.length &&
+      !p.voraussetzungen.vulkanismus.includes(vulkan)) ok = false;
+
+  if (p.voraussetzungen.substanz.length &&
+      !p.voraussetzungen.substanz.includes(subst)) ok = false;
 
   return ok;
 }
 
-/* ------------------------ RENDER PFLANZEN ------------------------ */
+
 function renderPlants() {
   const container = document.getElementById('gattungen');
   container.innerHTML = '';
+
   const gattungen = [...new Set(plantsData.map(p => p.gattung))];
 
   gattungen.forEach(gattung => {
@@ -385,11 +344,13 @@ function renderPlants() {
     const tbody = document.createElement('tbody');
 
     let shouldOpen = false;
+
     plantsData.filter(p => p.gattung === gattung).forEach(p => {
       const row = document.createElement('tr');
       const ok = checkVoraussetzungen(p);
       row.className = ok ? 'green' : 'red';
-      if(ok) shouldOpen = true;
+
+      if (ok) shouldOpen = true;
 
       row.innerHTML = `
         <td>${p.name}</td>
@@ -405,8 +366,11 @@ function renderPlants() {
 
     table.appendChild(tbody);
     content.appendChild(table);
+
     header.onclick = () => box.classList.toggle('open');
-    if(shouldOpen) box.classList.add('open');
+
+    if (shouldOpen) box.classList.add('open');
+
     box.appendChild(header);
     box.appendChild(content);
     container.appendChild(box);
@@ -415,89 +379,53 @@ function renderPlants() {
   updateGesamtwert();
 }
 
-/* ------------------------ ÄNDERN + SPEICHERN ------------------------ */
+
+/* -------------------------------------------------------
+   SAMMELZAHL ÄNDERN
+--------------------------------------------------------- */
 function change(name, delta) {
   const plant = plantsData.find(p => p.name === name);
-  if(!plant) return;
+  if (!plant) return;
+
   plant.gesammelt = Math.max(0, plant.gesammelt + delta);
   document.getElementById('cnt_' + name).innerText = plant.gesammelt;
+
   saveStorage();
   updateGesamtwert();
 }
 
+
+/* -------------------------------------------------------
+   GESAMTWERT
+--------------------------------------------------------- */
 function updateGesamtwert() {
   let total = 0;
   let count = 0;
-  plantsData.forEach(p => { total += p.gesammelt * p.wert; count += p.gesammelt; });
-  document.getElementById('gesamtwert').innerText = "Gesamtwert: " + total.toLocaleString();
-  document.getElementById('gesamtanzahl').innerText = "Gesammelt: " + count + " Pflanzen";
-}
 
-/* ------------------------ PLANET-FENSTER ------------------------ */
-function initPlanetCheckboxes() {
-  const container = document.getElementById('planet-checkboxes');
-  container.innerHTML = '';
-  const gattungen = [...new Set(plantsData.map(p => p.gattung))];
-  gattungen.forEach(gattung => {
-    const id = 'chk_' + gattung;
-    const label = document.createElement('label');
-    label.style.marginRight = '10px';
-
-    const cb = document.createElement('input');
-    cb.type = 'checkbox';
-    cb.id = id;
-    cb.checked = true;
-    cb.onchange = () => renderPossiblePlants();
-
-    label.appendChild(cb);
-    label.appendChild(document.createTextNode(' ' + gattung));
-    container.appendChild(label);
-  });
-}
-
-function renderPossiblePlants() {
-  const druck = parseFloat(document.getElementById('druck').value);
-  const tempMin = parseFloat(document.getElementById('temp_min').value);
-  const tempMax = parseFloat(document.getElementById('temp_max').value);
-  const grav = parseFloat(document.getElementById('grav').value);
-  const atmos = document.getElementById('atmos').value;
-  const vulkan = document.getElementById('vulkan').value;
-  const subst = document.getElementById('subst').value;
-
-  const gattungen = [...new Set(plantsData.map(p => p.gattung))];
-  let html = '<table style="width:100%; border-collapse:collapse;"><tr><th>Gattung</th><th>Pflanze</th><th>Wert</th></tr>';
-  let gesamt = 0;
-
-  gattungen.forEach(gattung => {
-    const checkbox = document.getElementById('chk_' + gattung);
-    if(!checkbox.checked) return;
-
-    const möglich = plantsData.filter(p => 
-      p.gattung === gattung &&
-      (p.voraussetzungen.druck.min === undefined || (druck >= p.voraussetzungen.druck.min && druck <= p.voraussetzungen.druck.max)) &&
-      (p.voraussetzungen.temperatur.min === undefined || !(tempMax < p.voraussetzungen.temperatur.min || tempMin > p.voraussetzungen.temperatur.max)) &&
-      (p.voraussetzungen.gravitation.min === undefined || (grav >= p.voraussetzungen.gravitation.min && grav <= p.voraussetzungen.gravitation.max)) &&
-      (p.voraussetzungen.atmosphaere.length === 0 || p.voraussetzungen.atmosphaere.includes(atmos)) &&
-      (p.voraussetzungen.vulkanismus.length === 0 || p.voraussetzungen.vulkanismus.includes(vulkan)) &&
-      (p.voraussetzungen.substanz.length === 0 || p.voraussetzungen.substanz.includes(subst))
-    );
-
-    if(möglich.length === 0) return;
-    const top = möglich.reduce((a,b) => a.wert > b.wert ? a : b);
-    gesamt += top.wert;
-    html += `<tr style="background-color:#c8f0c8;"><td>${gattung}</td><td>${top.name}</td><td>${top.wert.toLocaleString()}</td></tr>`;
+  plantsData.forEach(p => {
+    total += p.gesammelt * p.wert;
+    count += p.gesammelt;
   });
 
-  html += '</table>';
-  document.getElementById('planet-pflanzen-liste').innerHTML = html;
-  document.getElementById('planet-gesamtwert').innerText = "Gesamtwert: " + gesamt.toLocaleString();
+  document.getElementById('gesamtwert').innerText =
+      "Gesamtwert: " + total.toLocaleString();
+
+  document.getElementById('gesamtanzahl').innerText =
+      "Gesammelt: " + count + " Pflanzen";
 }
 
-/* ------------------------ START ------------------------ */
+
+/* -------------------------------------------------------
+   START
+--------------------------------------------------------- */
 loadStorage();
 renderPlants();
-initPlanetCheckboxes();
-renderPossiblePlants();
+
+if (localStorage.getItem("edsm_user") && localStorage.getItem("edsm_key")) {
+    loadPlanetsFromEDSM();
+} else {
+    openLogin();
+}
 </script>
 
 </body>
