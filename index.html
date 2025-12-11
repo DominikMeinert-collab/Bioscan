@@ -2,8 +2,6 @@
 <html>
 <head>
 <meta charset="UTF-8">
-<title>Elite Dangerous Pflanzen & EDSM Sync</title>
-
 <style>
 body {
     font-family: Arial;
@@ -49,14 +47,15 @@ body {
     display: flex; 
     flex-wrap: wrap; 
     gap: 20px; 
+    align-items: flex-start;
 }
 
 .gattung-box { 
     border: 2px solid #ccc; 
     padding: 10px; 
+    flex: 1 1 auto; 
     min-width: 250px; 
     max-width: 32%; 
-    flex: 1 1 auto;
     background: rgba(255,255,255,0.8);
     border-radius: 5px;
 }
@@ -64,10 +63,11 @@ body {
 .gattung-header {
     cursor: pointer;
     padding: 8px;
-    text-align: center;
-    font-weight: bold;
     background: rgba(200,200,200,0.6);
     border-radius: 5px;
+    font-weight: bold;
+    transition: background 0.2s;
+    text-align: center;
 }
 
 .gattung-header:hover { background: rgba(180,180,180,0.8); }
@@ -75,123 +75,94 @@ body {
 .gattung-content {
     overflow: hidden;
     max-height: 0;
-    transition: max-height .35s ease;
+    transition: max-height 0.35s ease;
 }
 .gattung-box.open .gattung-content { max-height: 2000px; }
 
-table { width: 100%; margin-top: 10px; border-collapse: collapse; }
-th, td { border: 1px solid #ccc; padding: 5px; text-align: center; }
+table { border-collapse: collapse; width: 100%; margin-top: 10px; }
+th, td { border: 1px solid #ccc; padding: 5px; text-align: center; font-size: 0.9em; }
 
-.green { background: #c8f0c8; }
-.red   { background: #f0c8c8; }
+.green { background-color: #c8f0c8; }
+.red { background-color: #f0c8c8; }
 
+button { padding: 2px 6px; margin: 0 2px; }
 input[type="number"] { width: 60px; }
 
-/* LOGIN OVERLAY */
-#loginOverlay {
+/* --- LOGIN OVERLAY --- */
+#loginBox {
     position: fixed;
-    top: 0; left: 0;
-    width: 100%; height: 100%;
+    top: 0; left: 0; width: 100%; height: 100%;
+    background: rgba(0,0,0,0.6);
     display: none;
-    background: rgba(0,0,0,0.7);
     justify-content: center;
     align-items: center;
-    z-index: 9999;
-}
-.loginBox {
-    width: 350px;
-    background: white;
-    padding: 20px;
-    border-radius: 10px;
+    z-index: 999999;
 }
 </style>
 </head>
 <body>
 
 <!-- LOGIN-FENSTER -->
-<div id="loginOverlay">
-    <div class="loginBox">
+<div id="loginBox">
+    <div style="background:white; padding:20px; border-radius:10px; width:350px;">
         <h3>EDSM Login</h3>
-
-        <label>Commander Name</label>
+        <label>Commander Name:</label>
         <input id="edsmName" type="text" style="width:100%; margin-bottom:10px;">
-
-        <label>API Key</label>
+        <label>API Key:</label>
         <input id="edsmKey" type="password" style="width:100%; margin-bottom:15px;">
-
         <button onclick="saveLogin()" style="width:100%;">Login</button>
     </div>
 </div>
 
 <div class="header">
-    <div class="controls">
+  <div class="controls">
 
-        <!-- EDSM Buttons + Planet Dropdown -->
-        <button onclick="showLogin()">EDSM Login</button>
-        <button onclick="logoutEDSM()">Logout</button>
+    <button onclick="openLogin()">EDSM Login</button>
+    <button onclick="logoutEDSM()">Logout</button>
 
-        Planet:
-        <select id="planetSelect">
-            <option>Bitte EDSM Login</option>
-        </select>
+    Planet:
+    <select id="planetSelect"></select>
 
-        Druck: <input id="druck" type="number" step="0.01" value="0.03">
+    Druck: <input id="druck" type="number" step="0.01" value="0.03">
+    Temperatur: von <input id="temp_min" type="number" value="0"> bis <input id="temp_max" type="number" value="200">
+    Gravitation: <input id="grav" type="number" step="0.01" value="0.33">
 
-        Temperatur: von <input id="temp_min" type="number" value="0">
-        bis <input id="temp_max" type="number" value="200">
+    Atmosphäre: 
+    <select id="atmos">
+      <option>Kohlendioxid</option><option>Neon</option><option>Sauerstoff</option>
+      <option>Ammoniak</option><option>Methan</option><option>Wasser</option>
+      <option>Schwefeldioxid</option><option>Stickstoff</option><option>Helium</option>
+      <option>Argon</option><option>Jede</option>
+    </select>
 
-        Gravitation: <input id="grav" type="number" step="0.01" value="0.33">
+    Vulkanismus:
+    <select id="vulkan">
+      <option>ohne</option><option>Ammoniak</option><option>Stickstoff</option>
+      <option>Wasser</option><option>Sauerstoff</option><option>Methan</option>
+      <option>Kohlendioxid</option>
+    </select>
 
-        Atmosphäre:
-        <select id="atmos">
-            <option>Jede</option>
-            <option>Kohlendioxid</option>
-            <option>Neon</option>
-            <option>Sauerstoff</option>
-            <option>Ammoniak</option>
-            <option>Methan</option>
-            <option>Wasser</option>
-            <option>Schwefeldioxid</option>
-            <option>Stickstoff</option>
-            <option>Helium</option>
-            <option>Argon</option>
-        </select>
+    Substanz:
+    <select id="subst">
+      <option>Eiswelt</option><option>Felsige Eiswelt</option>
+      <option>Felsige Welt</option><option>Hochmetallhaltige Welt</option>
+    </select>
 
-        Vulkanismus:
-        <select id="vulkan">
-            <option>ohne</option>
-            <option>Ammoniak</option>
-            <option>Stickstoff</option>
-            <option>Wasser</option>
-            <option>Sauerstoff</option>
-            <option>Methan</option>
-            <option>Kohlendioxid</option>
-        </select>
+    <button onclick="renderPlants()">Aktualisieren</button>
+  </div>
 
-        Substanz:
-        <select id="subst">
-            <option>Eiswelt</option>
-            <option>Felsige Eiswelt</option>
-            <option>Felsige Welt</option>
-            <option>Hochmetallhaltige Welt</option>
-        </select>
-
-        <button onclick="renderPlants()">Aktualisieren</button>
-    </div>
-
-    <div class="wert-box">
-        <div id="gesamtwert">Gesamtwert: 0</div>
-        <div id="gesamtanzahl">Gesammelt: 0 Pflanzen</div>
-    </div>
+  <div id="wert-box" class="wert-box">
+      <div id="gesamtwert">Gesamtwert: 0</div>
+      <div id="gesamtanzahl">Gesammelt: 0 Pflanzen</div>
+  </div>
 </div>
 
-<div id="gattungen" class="gattungs-container"></div>
+<div class="gattungs-container" id="gattungen"></div>
 
 <script>
-/* -----------------------------
-   PFLANZEN – KURZVERSION
-   (du setzt später deine 114 ein)
------------------------------- */
+/* -------------------------------------------------------
+   PFLANZEN – HIER DEINE 114 EINTRAGEN
+--------------------------------------------------------- */
 const plantsData = [
 // Beispielstruktur, später auf 114 Pflanzen erweitern
  // Gattung: Aleoida
@@ -351,221 +322,225 @@ const plantsData = [
   
 ];
 
-/* -----------------------------
-   SPEICHER LADEN
------------------------------- */
+/* -------------------------------------------------------
+   LOCAL STORAGE
+--------------------------------------------------------- */
 function loadStorage() {
-    const saved = localStorage.getItem("plantsSave");
-    if (!saved) return;
-    const parsed = JSON.parse(saved);
-    plantsData.forEach(p => {
-        if (parsed[p.name] !== undefined)
-            p.gesammelt = parsed[p.name];
-    });
+  const saved = localStorage.getItem("plantsSave");
+  if (!saved) return;
+  const parsed = JSON.parse(saved);
+  plantsData.forEach(p => { if (parsed[p.name] !== undefined) p.gesammelt = parsed[p.name]; });
 }
-
-/* -----------------------------
-   SPEICHER SCHREIBEN
------------------------------- */
 function saveStorage() {
-    const out = {};
-    plantsData.forEach(p => out[p.name] = p.gesammelt);
-    localStorage.setItem("plantsSave", JSON.stringify(out));
+  const saveObj = {};
+  plantsData.forEach(p => saveObj[p.name] = p.gesammelt);
+  localStorage.setItem("plantsSave", JSON.stringify(saveObj));
 }
 
-/* -----------------------------
-   LOGIN FUNKTIONEN
------------------------------- */
-function showLogin() {
-    document.getElementById("loginOverlay").style.display = "flex";
-}
+/* -------------------------------------------------------
+   EDSM LOGIN
+--------------------------------------------------------- */
+function openLogin() { document.getElementById("loginBox").style.display = "flex"; }
 
 function saveLogin() {
-    const name = document.getElementById("edsmName").value.trim();
-    const key  = document.getElementById("edsmKey").value.trim();
-
-    if (!name || !key) {
-        alert("Bitte Name + API-Key eingeben!");
-        return;
-    }
-
+    const name = edsmName.value.trim();
+    const key = edsmKey.value.trim();
+    if (!name || !key) { alert("Bitte Name + API-Key eingeben"); return; }
     localStorage.setItem("edsm_user", name);
     localStorage.setItem("edsm_key", key);
-
-    document.getElementById("loginOverlay").style.display = "none";
+    loginBox.style.display = "none";
     loadPlanetsFromEDSM();
 }
 
 function logoutEDSM() {
     localStorage.removeItem("edsm_user");
     localStorage.removeItem("edsm_key");
-    document.getElementById("planetSelect").innerHTML =
-        "<option>Bitte EDSM Login</option>";
-    alert("Logout erfolgreich");
+    alert("Logout erfolgreich.");
 }
 
-/* -----------------------------
-   PLANETEN AUS EDSM LADEN
------------------------------- */
+/* -------------------------------------------------------
+   PLANETEN LADEN (EDSM)
+--------------------------------------------------------- */
 async function loadPlanetsFromEDSM() {
+    const commander = localStorage.getItem("edsm_user");
+    const apiKey = localStorage.getItem("edsm_key");
 
-    const user = localStorage.getItem("edsm_user");
-    const key  = localStorage.getItem("edsm_key");
-    const sel  = document.getElementById("planetSelect");
-
-    if (!user || !key) {
-        sel.innerHTML = "<option>Bitte EDSM Login</option>";
+    if (!commander || !apiKey) {
+        planetSelect.innerHTML = "<option>Bitte einloggen...</option>";
         return;
     }
 
-    sel.innerHTML = "<option>Lade Planeten...</option>";
+    planetSelect.innerHTML = "<option>Lade...</option>";
 
     try {
-        const url = `https://www.edsm.net/api-logs-v1/get-bodies?commanderName=${encodeURIComponent(user)}&apiKey=${key}`;
-        const response = await fetch(url);
-        const data = await response.json();
+        const url = `https://www.edsm.net/api-logs-v1/get-bodies?commanderName=${encodeURIComponent(commander)}&apiKey=${apiKey}`;
+        const res = await fetch(url);
+        const data = await res.json();
 
-        if (!data || !data.bodies) {
-            sel.innerHTML = "<option>Keine Daten erhalten</option>";
+        if (!data?.bodies) {
+            planetSelect.innerHTML = "<option>Keine Daten</option>";
             return;
         }
 
         const planets = data.bodies.filter(b => b.type === "Planet");
 
-        sel.innerHTML = "<option value=''>-- Planet wählen --</option>";
-
+        planetSelect.innerHTML = "<option value=''>-- Planet wählen --</option>";
         planets.forEach(p => {
-            let opt = document.createElement("option");
+            const opt = document.createElement("option");
             opt.value = JSON.stringify(p);
-            opt.textContent = `${p.name} (${p.system})`;
-            sel.appendChild(opt);
+            opt.textContent = p.name + " (" + p.system + ")";
+            planetSelect.appendChild(opt);
         });
 
-    } catch (e) {
-        console.error(e);
-        sel.innerHTML = "<option>Fehler beim Abruf</option>";
+    } catch {
+        planetSelect.innerHTML = "<option>EDSM Fehler</option>";
     }
 }
 
-/* -----------------------------
-   PFLANZEN LOGIK
------------------------------- */
+/* -------------------------------------------------------
+   AUTO: PLANETENDATEN EINTRAGEN
+--------------------------------------------------------- */
+planetSelect.addEventListener("change", () => {
+    if (!planetSelect.value) return;
+    applyPlanetData(JSON.parse(planetSelect.value));
+});
+
+function applyPlanetData(p) {
+    if (p.surfacePressure) druck.value = (p.surfacePressure / 100000).toFixed(3);
+    if (p.surfaceTemperature) {
+        temp_min.value = p.surfaceTemperature - 5;
+        temp_max.value = p.surfaceTemperature + 5;
+    }
+    if (p.surfaceGravity) grav.value = (p.surfaceGravity / 9.81).toFixed(2);
+
+    if (p.atmosphereType) {
+        const atm = p.atmosphereType.toLowerCase();
+        if (atm.includes("carbon")) atmos.value="Kohlendioxid";
+        else if (atm.includes("oxygen")) atmos.value="Sauerstoff";
+        else if (atm.includes("nitrogen")) atmos.value="Stickstoff";
+        else if (atm.includes("methane")) atmos.value="Methan";
+        else atmos.value="Jede";
+    }
+
+    if (p.volcanismType) {
+        const v = p.volcanismType.toLowerCase();
+        if (v.includes("nitrogen")) vulkan.value="Stickstoff";
+        else if (v.includes("water")) vulkan.value="Wasser";
+        else if (v.includes("methane")) vulkan.value="Methan";
+        else vulkan.value="ohne";
+    }
+
+    if (p.planetType) {
+        const t = p.planetType.toLowerCase();
+        if (t.includes("ice")) subst.value="Eiswelt";
+        else if (t.includes("rocky ice")) subst.value="Felsige Eiswelt";
+        else if (t.includes("rocky")) subst.value="Felsige Welt";
+        else if (t.includes("high metal")) subst.value="Hochmetallhaltige Welt";
+    }
+
+    renderPlants();
+}
+
+/* -------------------------------------------------------
+   PFLANZEN-FUNKTIONEN
+--------------------------------------------------------- */
 function checkVoraussetzungen(p) {
-    const dr   = parseFloat(druck.value);
-    const tmin = parseFloat(temp_min.value);
-    const tmax = parseFloat(temp_max.value);
-    const gr   = parseFloat(grav.value);
-    const atm  = atmos.value;
-    const vul  = vulkan.value;
-    const sub  = subst.value;
+  const dr = parseFloat(druck.value);
+  const tMin = parseFloat(temp_min.value);
+  const tMax = parseFloat(temp_max.value);
+  const g = parseFloat(grav.value);
 
-    if (dr < p.voraussetzungen.druck.min || dr > p.voraussetzungen.druck.max) return false;
-    if (tmax < p.voraussetzungen.temperatur.min || tmin > p.voraussetzungen.temperatur.max) return false;
-    if (gr < p.voraussetzungen.gravitation.min || gr > p.voraussetzungen.gravitation.max) return false;
+  if (dr < p.voraussetzungen.druck.min || dr > p.voraussetzungen.druck.max) return false;
+  if (tMax < p.voraussetzungen.temperatur.min || tMin > p.voraussetzungen.temperatur.max) return false;
+  if (g < p.voraussetzungen.gravitation.min || g > p.voraussetzungen.gravitation.max) return false;
 
-    if (p.voraussetzungen.atmosphaere.length &&
-        !p.voraussetzungen.atmosphaere.includes(atm)) return false;
+  if (p.voraussetzungen.atmosphaere.length &&
+      !p.voraussetzungen.atmosphaere.includes(atmos.value)) return false;
 
-    if (p.voraussetzungen.vulkanismus.length &&
-        !p.voraussetzungen.vulkanismus.includes(vul)) return false;
+  if (p.voraussetzungen.substanz.length &&
+      !p.voraussetzungen.substanz.includes(subst.value)) return false;
 
-    if (p.voraussetzungen.substanz.length &&
-        !p.voraussetzungen.substanz.includes(sub)) return false;
-
-    return true;
+  return true;
 }
 
 function renderPlants() {
-    const box = document.getElementById("gattungen");
-    box.innerHTML = "";
+  const container = document.getElementById('gattungen');
+  container.innerHTML = '';
+  const gattungen = [...new Set(plantsData.map(p => p.gattung))];
 
-    const gattungen = [...new Set(plantsData.map(p => p.gattung))];
+  gattungen.forEach(gattung => {
+    const box = document.createElement('div');
+    box.className = 'gattung-box';
 
-    gattungen.forEach(g => {
-        const gbox = document.createElement("div");
-        gbox.className = "gattung-box";
+    const header = document.createElement('div');
+    header.className = 'gattung-header';
+    header.innerText = gattung;
 
-        const head = document.createElement("div");
-        head.className = "gattung-header";
-        head.textContent = g;
+    const content = document.createElement('div');
+    content.className = 'gattung-content';
 
-        const cont = document.createElement("div");
-        cont.className = "gattung-content";
+    const table = document.createElement('table');
+    const tbody = document.createElement('tbody');
 
-        const tab = document.createElement("table");
-        const tbody = document.createElement("tbody");
+    let shouldOpen = false;
 
-        let open = false;
+    plantsData.filter(p => p.gattung === gattung).forEach(p => {
+      const row = document.createElement('tr');
+      const ok = checkVoraussetzungen(p);
+      row.className = ok ? 'green' : 'red';
+      if (ok) shouldOpen = true;
 
-        plantsData.filter(p => p.gattung === g).forEach(p => {
-            const row = document.createElement("tr");
-            const ok = checkVoraussetzungen(p);
-
-            row.className = ok ? "green" : "red";
-
-            if (ok) open = true;
-
-            row.innerHTML = `
-                <td>${p.name}</td>
-                <td>${p.wert.toLocaleString()}</td>
-                <td id="cnt_${p.name}">${p.gesammelt}</td>
-                <td>
-                    <button onclick="change('${p.name}',-1)">-</button>
-                    <button onclick="change('${p.name}',1)">+</button>
-                </td>
-            `;
-            tbody.appendChild(row);
-        });
-
-        tab.appendChild(tbody);
-        cont.appendChild(tab);
-
-        head.onclick = () => gbox.classList.toggle("open");
-
-        if (open) gbox.classList.add("open");
-
-        gbox.appendChild(head);
-        gbox.appendChild(cont);
-        box.appendChild(gbox);
+      row.innerHTML = `
+        <td>${p.name}</td>
+        <td>${p.wert.toLocaleString()}</td>
+        <td id="cnt_${p.name}">${p.gesammelt}</td>
+        <td>
+          <button onclick="change('${p.name}', -1)">-</button>
+          <button onclick="change('${p.name}', 1)">+</button>
+        </td>
+      `;
+      tbody.appendChild(row);
     });
 
-    updateGesamtwert();
+    table.appendChild(tbody);
+    content.appendChild(table);
+
+    header.onclick = () => box.classList.toggle('open');
+    if (shouldOpen) box.classList.add('open');
+
+    box.appendChild(header);
+    box.appendChild(content);
+    container.appendChild(box);
+  });
+
+  updateGesamtwert();
 }
 
 function change(name, delta) {
-    const p = plantsData.find(x => x.name === name);
-    p.gesammelt = Math.max(0, p.gesammelt + delta);
-    document.getElementById("cnt_" + name).textContent = p.gesammelt;
-    saveStorage();
-    updateGesamtwert();
+  const plant = plantsData.find(p => p.name === name);
+  if (!plant) return;
+  plant.gesammelt = Math.max(0, plant.gesammelt + delta);
+  document.getElementById('cnt_' + name).innerText = plant.gesammelt;
+  saveStorage();
+  updateGesamtwert();
 }
 
 function updateGesamtwert() {
-    let sum = 0;
-    let cnt = 0;
-
-    plantsData.forEach(p => {
-        sum += p.gesammelt * p.wert;
-        cnt += p.gesammelt;
-    });
-
-    gesamtwert.textContent = "Gesamtwert: " + sum.toLocaleString();
-    gesamtanzahl.textContent = "Gesammelt: " + cnt + " Pflanzen";
+  let total = 0, count = 0;
+  plantsData.forEach(p => { total += p.gesammelt * p.wert; count += p.gesammelt; });
+  gesamtwert.innerText = "Gesamtwert: " + total.toLocaleString();
+  gesamtanzahl.innerText = "Gesammelt: " + count + " Pflanzen";
 }
 
-/* -----------------------------
+/* -------------------------------------------------------
    START
------------------------------- */
+--------------------------------------------------------- */
 loadStorage();
+
+if (localStorage.getItem("edsm_user")) loadPlanetsFromEDSM();
+else openLogin();
+
 renderPlants();
-
-if (localStorage.getItem("edsm_user") &&
-    localStorage.getItem("edsm_key")) {
-    loadPlanetsFromEDSM();
-} else {
-    showLogin();
-}
-
 </script>
 
 </body>
